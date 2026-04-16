@@ -1,0 +1,12 @@
+machine		amd64
+maxusers	80
+
+option		FFS
+option		INET
+option		INET6
+
+config		bsd root on wd0a
+
+mainbus0 at root
+cpu0 at mainbus?
+pci* at mainbus?

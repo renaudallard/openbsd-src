@@ -1,0 +1,12 @@
+tunnel L2TP protocol l2tp {
+	listen on 0.0.0.0
+}
+ipcp IPCP {
+	pool-address 10.0.0.2-10.0.0.254
+	dns-servers 10.0.0.1
+}
+interface pppx0 address 10.0.0.1 ipcp IPCP
+authentication LOCAL type local {
+	users-file "/etc/npppd/npppd-users"
+}
+bind tunnel from L2TP authenticated by LOCAL to pppx0

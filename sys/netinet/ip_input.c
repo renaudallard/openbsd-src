@@ -105,7 +105,7 @@ int	ip_directedbcast = 0;			/* [a] */
 struct mutex	ipq_mutex = MUTEX_INITIALIZER(IPL_SOFTNET);
 
 /* IP reassembly queue */
-LIST_HEAD(, ipq) ipq;				/* [Q] */
+TAILQ_HEAD(, ipq) ipq;				/* [Q] */
 
 /* Keep track of memory used for reassembly */
 int	ip_maxqueue = 300;			/* [a] */
@@ -212,7 +212,7 @@ ip_init(void)
 		    pr->pr_protocol && pr->pr_protocol != IPPROTO_RAW &&
 		    pr->pr_protocol < IPPROTO_MAX)
 			ip_protox[pr->pr_protocol] = pr - inetsw;
-	LIST_INIT(&ipq);
+	TAILQ_INIT(&ipq);
 
 	/* Fill in list of ports not to allocate dynamically. */
 	memset(&baddynamicports, 0, sizeof(baddynamicports));
@@ -686,7 +686,7 @@ ip_fragcheck(struct mbuf **mp, int *offp)
 		 * Look for queue of fragments
 		 * of this datagram.
 		 */
-		LIST_FOREACH(fp, &ipq, ipq_q) {
+		TAILQ_FOREACH(fp, &ipq, ipq_q) {
 			if (ip->ip_id == fp->ipq_id &&
 			    ip->ip_src.s_addr == fp->ipq_src.s_addr &&
 			    ip->ip_dst.s_addr == fp->ipq_dst.s_addr &&
@@ -981,7 +981,7 @@ ip_reass(struct ipqent *ipqe, struct ipq *fp)
 		fp = pool_get(&ipq_pool, PR_NOWAIT);
 		if (fp == NULL)
 			goto dropfrag;
-		LIST_INSERT_HEAD(&ipq, fp, ipq_q);
+		TAILQ_INSERT_HEAD(&ipq, fp, ipq_q);
 		fp->ipq_ttl = IPFRAGTTL;
 		fp->ipq_p = ipqe->ipqe_ip->ip_p;
 		fp->ipq_id = ipqe->ipqe_ip->ip_id;
@@ -1116,7 +1116,7 @@ insert:
 	ip->ip_len = htons(next);
 	ip->ip_src = fp->ipq_src;
 	ip->ip_dst = fp->ipq_dst;
-	LIST_REMOVE(fp, ipq_q);
+	TAILQ_REMOVE(&ipq, fp, ipq_q);
 	pool_put(&ipq_pool, fp);
 	m->m_len += (ip->ip_hl << 2);
 	m->m_data -= (ip->ip_hl << 2);
@@ -1148,7 +1148,7 @@ ip_freef(struct ipq *fp)
 		pool_put(&ipqent_pool, q);
 		ip_frags--;
 	}
-	LIST_REMOVE(fp, ipq_q);
+	TAILQ_REMOVE(&ipq, fp, ipq_q);
 	pool_put(&ipq_pool, fp);
 }
 
@@ -1162,7 +1162,7 @@ ip_slowtimo(void)
 	struct ipq *fp, *nfp;
 
 	mtx_enter(&ipq_mutex);
-	LIST_FOREACH_SAFE(fp, &ipq, ipq_q, nfp) {
+	TAILQ_FOREACH_SAFE(fp, &ipq, ipq_q, nfp) {
 		if (--fp->ipq_ttl == 0) {
 			ipstat_inc(ips_fragtimeout);
 			ip_freef(fp);
@@ -1181,9 +1181,9 @@ ip_flush(int maxqueue)
 
 	MUTEX_ASSERT_LOCKED(&ipq_mutex);
 
-	while (!LIST_EMPTY(&ipq) && ip_frags > maxqueue * 3 / 4 && --max) {
+	while (!TAILQ_EMPTY(&ipq) && ip_frags > maxqueue * 3 / 4 && --max) {
 		ipstat_inc(ips_fragdropped);
-		ip_freef(LIST_FIRST(&ipq));
+		ip_freef(TAILQ_LAST(&ipq, ipq));
 	}
 }
 

@@ -1,0 +1,6 @@
+.Dd January 1, 2024
+.Dt TEST 1
+.Os
+.Sh NAME
+.Nm test
+.Nd test program

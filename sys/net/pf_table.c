@@ -299,7 +299,10 @@ pfr_fill_feedback(struct pfr_kentry_all *ke, struct pfr_addr *ad)
 	default:
 		unhandled_af(ke->pfrke_af);
 	}
-	ad->pfra_weight = ((struct pfr_kentry_cost *)ke)->weight;
+	if (ke->pfrke_type == PFRKE_COST)
+		ad->pfra_weight = ((struct pfr_kentry_cost *)ke)->weight;
+	else
+		ad->pfra_weight = 0;
 	ad->pfra_af = ke->pfrke_af;
 	ad->pfra_net = ke->pfrke_net;
 	if (ke->pfrke_flags & PFRKE_FLAG_NOT)

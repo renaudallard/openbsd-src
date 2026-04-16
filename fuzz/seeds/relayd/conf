@@ -1,0 +1,5 @@
+table <test> { 127.0.0.1 }
+relay "test" {
+	listen on 127.0.0.1 port 8080
+	forward to <test> port 80
+}

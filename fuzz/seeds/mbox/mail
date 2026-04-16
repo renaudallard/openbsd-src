@@ -1,0 +1,9 @@
+From user@example.com Mon Jan  1 00:00:00 2024
+From: user@example.com
+To: root@localhost
+Subject: test
+Date: Mon, 1 Jan 2024 00:00:00 +0000
+Content-Type: text/plain
+
+This is a test message.
+

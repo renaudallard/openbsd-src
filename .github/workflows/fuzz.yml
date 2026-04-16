@@ -1,0 +1,148 @@
+name: Fuzz OpenBSD Userland
+
+on:
+  schedule:
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+    inputs:
+      parallel:
+        description: 'Number of parallel fuzzing jobs'
+        default: '2'
+        type: choice
+        options: ['1', '2', '3']
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Rebase onto upstream OpenBSD
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/openbsd/src.git
+          git fetch upstream master
+          if git rebase upstream/master; then
+            git push origin master --force-with-lease
+            echo "Rebased onto upstream"
+          else
+            echo "Rebase conflict - skipping sync"
+            git rebase --abort
+          fi
+
+  setup:
+    needs: sync
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - id: set
+        run: |
+          n="${{ github.event.inputs.parallel || '2' }}"
+          echo "matrix=$(seq 0 $((n - 1)) | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
+
+  fuzz:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 270
+    strategy:
+      fail-fast: false
+      matrix:
+        batch: ${{ fromJSON(needs.setup.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Restore fuzzing state
+        uses: actions/cache/restore@v5
+        with:
+          path: fuzz/output
+          key: fuzz-output-b${{ matrix.batch }}-${{ github.run_number }}
+          restore-keys: |
+            fuzz-output-b${{ matrix.batch }}-
+
+      - name: Fuzz in OpenBSD VM
+        uses: vmactions/openbsd-vm@v1
+        with:
+          release: "7.9"
+          usesh: true
+          prepare: |
+            pkg_add afl++
+            pkg_info -Q llvm | grep '^llvm-19' | head -1 | xargs pkg_add
+            v=$(ftp -o - https://cdn.openbsd.org/pub/OpenBSD/snapshots/amd64/SHA256 2>/dev/null | sed -n 's/.*(comp\([0-9]*\)\.tgz).*/\1/p')
+            echo "Upgrading headers/libs to snapshot version ${v}"
+            ftp -o /tmp/comp.tgz "https://cdn.openbsd.org/pub/OpenBSD/snapshots/amd64/comp${v}.tgz"
+            ftp -o /tmp/base.tgz "https://cdn.openbsd.org/pub/OpenBSD/snapshots/amd64/base${v}.tgz"
+            cd / && tar xzphf /tmp/comp.tgz ./usr/include
+            cd / && tar xzphf /tmp/base.tgz ./usr/lib
+            rm -f /tmp/comp.tgz /tmp/base.tgz
+          run: |
+            set -e
+            total="${{ github.event.inputs.parallel || '2' }}"
+            batch="${{ matrix.batch }}"
+            echo "=== Building targets ==="
+            sh fuzz/scripts/build.sh
+            echo ""
+            echo "=== Fuzzing (batch ${batch}/${total}) ==="
+            sh fuzz/scripts/run.sh 10000 "$batch" "$total"
+            echo ""
+            echo "=== Report ==="
+            sh fuzz/scripts/report.sh
+
+      - name: Save fuzzing state
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: fuzz/output
+          key: fuzz-output-b${{ matrix.batch }}-${{ github.run_number }}
+
+      - name: Upload crashes
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: crashes-b${{ matrix.batch }}-${{ github.run_number }}
+          path: fuzz/crashes/
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Upload summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: summary-b${{ matrix.batch }}-${{ github.run_number }}
+          path: fuzz/summary.md
+          if-no-files-found: ignore
+
+  report:
+    needs: fuzz
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download all crash artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: crashes-*
+          path: fuzz/crashes-all/
+          merge-multiple: true
+
+      - name: Merge crashes into fuzz/crashes
+        run: |
+          mkdir -p fuzz/crashes
+          if [ -d fuzz/crashes-all ]; then
+            cp -r fuzz/crashes-all/* fuzz/crashes/ 2>/dev/null || true
+          fi
+
+      - name: Open issues for new crashes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sh fuzz/scripts/issue.sh

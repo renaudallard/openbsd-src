@@ -1,0 +1,10 @@
+build/
+output/
+corpus/
+crashes/
+logs/
+work.*/
+summary.md
+harness/httpd_fuzz
+harness/smtpd_fuzz
+harness/sshd_fuzz

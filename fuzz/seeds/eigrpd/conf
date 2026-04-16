@@ -1,0 +1,4 @@
+router-id 10.0.0.1
+address-family ipv4 {
+	autonomous-system 1
+}

@@ -1,0 +1,13 @@
+vm "test" {
+	memory 512M
+	disk "/var/vm/test.qcow2"
+	interface {
+		switch "local"
+	}
+	owner user
+	disable
+}
+
+switch "local" {
+	interface bridge0
+}

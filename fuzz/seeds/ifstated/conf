@@ -1,0 +1,27 @@
+init-state auto
+
+carp_up = carp.carp0.up
+carp_down = carp.carp0.down
+
+state auto {
+	if $carp_up
+		set-state master
+	if $carp_down
+		set-state backup
+}
+
+state master {
+	init {
+		run "/sbin/ifconfig em0 up"
+	}
+	if $carp_down
+		set-state backup
+}
+
+state backup {
+	init {
+		run "/sbin/ifconfig em0 down"
+	}
+	if $carp_up
+		set-state master
+}

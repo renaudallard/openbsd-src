@@ -1,0 +1,2 @@
+mygroup (host1, user1, domain1) (host2, user2, domain2)
+admin (,root,) (,wheel,)

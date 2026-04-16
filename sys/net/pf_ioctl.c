@@ -1500,8 +1500,11 @@ pf_sourcelim_add(const struct pfioc_sourcelim *ioc)
 		pfsrlim->pfsrlim_rate_bucket = bucket;
 	}
 
-	pfsrlim->pfsrlim_ipv4_mask.v4.s_addr =
-	    htonl(0xffffffff << (32 - pfsrlim->pfsrlim_ipv4_prefix));
+	if (pfsrlim->pfsrlim_ipv4_prefix == 0)
+		pfsrlim->pfsrlim_ipv4_mask.v4.s_addr = 0;
+	else
+		pfsrlim->pfsrlim_ipv4_mask.v4.s_addr =
+		    htonl(0xffffffff << (32 - pfsrlim->pfsrlim_ipv4_prefix));
 
 	prefix = pfsrlim->pfsrlim_ipv6_prefix;
 	for (i = 0; i < nitems(pfsrlim->pfsrlim_ipv6_mask.addr32); i++) {
@@ -1566,6 +1569,8 @@ unlock:
 	PF_UNLOCK();
 	NET_UNLOCK();
 free:
+	if (pfsrlim->pfsrlim_overload.table != NULL)
+		pfr_detach_table(pfsrlim->pfsrlim_overload.table);
 	pool_put(&pf_sourcelim_pl, pfsrlim);
 
 	return (error);

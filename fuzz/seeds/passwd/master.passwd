@@ -1,0 +1,3 @@
+root:$2b$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:0:0:daemon:0:0:Charlie &:/root:/bin/ksh
+nobody:*:32767:32767::0:0:Nobody:/nonexistent:/sbin/nologin
+_sshd:*:27:27::0:0:sshd privsep:/var/empty:/sbin/nologin

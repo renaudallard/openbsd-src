@@ -1,0 +1,14 @@
+listen on 127.0.0.1
+listen on 127.0.0.1 accounting
+
+client 127.0.0.1/32 {
+	secret "testing123"
+}
+
+module bsdauth {
+	set module-type bsdauth
+}
+
+authenticate * {
+	authenticate-by bsdauth
+}

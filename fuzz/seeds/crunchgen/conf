@@ -1,0 +1,3 @@
+srcdirs /usr/src/bin /usr/src/sbin
+progs cat ls mount
+ln cat echo

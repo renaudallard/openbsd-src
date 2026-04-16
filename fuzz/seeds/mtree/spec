@@ -1,0 +1,16 @@
+/set type=file uid=0 gid=0 mode=0644
+.               type=dir mode=0755
+    bin         type=dir mode=0755
+        ls      mode=0555
+        cat     mode=0555
+        chmod   mode=0555
+    ..
+    etc         type=dir mode=0755
+        rc.conf type=file mode=0644
+        hosts   type=file mode=0644
+    ..
+    var         type=dir mode=0755
+        log     type=dir mode=0755
+        ..
+    ..
+..

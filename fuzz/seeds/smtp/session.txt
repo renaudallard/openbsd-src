@@ -1,0 +1,9 @@
+EHLO localhost
+MAIL FROM:<user@example.com>
+RCPT TO:<root@localhost>
+DATA
+Subject: test
+
+test
+.
+QUIT

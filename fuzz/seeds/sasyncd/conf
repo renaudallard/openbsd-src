@@ -1,0 +1,4 @@
+interface carp0
+group carp
+peer 10.0.0.2
+sharedkey "testing123"

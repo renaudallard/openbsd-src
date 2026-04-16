@@ -1,0 +1,3 @@
+server "default" {
+	listen on lo0 port 80
+}
